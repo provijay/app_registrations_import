@@ -1,136 +1,181 @@
 <#
 .SYNOPSIS
-    Exports all Azure AD App Registrations with all properties to a JSON file
+    Exports all Azure AD App Registrations with all properties to a JSON file using AzureAD module
 .DESCRIPTION
-    This script connects to Microsoft Graph, retrieves all application registrations
+    This script connects to Azure AD using the AzureAD module, retrieves all application registrations
     with their complete set of properties, and exports them to a JSON file.
 .PARAMETER OutputFile
     Path to the output JSON file (default: .\app-registrations-export.json)
-.PARAMETER IncludeAllProperties
-    Whether to include all available properties (default: $true)
+.PARAMETER IncludeSecretsInfo
+    Whether to include information about secrets (metadata only, not actual values)
 #>
 
 param(
     [string]$OutputFile = ".\app-registrations-export.json",
-    [bool]$IncludeAllProperties = $true
+    [bool]$IncludeSecretsInfo = $true
 )
 
-# Check if Microsoft.Graph module is installed
-if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
-    Write-Host "Installing Microsoft.Graph module..." -ForegroundColor Yellow
-    Install-Module -Name Microsoft.Graph -Force -Scope CurrentUser
+# Function to test if AzureAD module is installed
+function Test-AzureADModule {
+    try {
+        Import-Module AzureAD -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
 }
 
-# Import required Microsoft.Graph modules
-Import-Module Microsoft.Graph.Applications
-Import-Module Microsoft.Graph.Users
+# Check if AzureAD module is installed
+if (-not (Test-AzureADModule)) {
+    Write-Host "AzureAD module not found. Installing..." -ForegroundColor Yellow
+    try {
+        Install-Module -Name AzureAD -Scope CurrentUser -Force -ErrorAction Stop
+        Import-Module AzureAD -ErrorAction Stop
+        Write-Host "AzureAD module installed successfully" -ForegroundColor Green
+    }
+    catch {
+        Write-Error "Failed to install AzureAD module: $($_.Exception.Message)"
+        Write-Host "Please install the AzureAD module manually using: Install-Module -Name AzureAD -Scope CurrentUser -Force" -ForegroundColor Red
+        exit 1
+    }
+}
+else {
+    Write-Host "AzureAD module is already installed" -ForegroundColor Green
+}
 
-# Connect to Microsoft Graph with required permissions
+# Connect to Azure AD
 try {
-    Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
-    Connect-MgGraph -Scopes "Application.Read.All", "User.Read.All", "Directory.Read.All" -ErrorAction Stop
-    Write-Host "Connected to Microsoft Graph successfully" -ForegroundColor Green
+    Write-Host "Connecting to Azure AD..." -ForegroundColor Yellow
+    $context = Get-AzureADCurrentSessionInfo -ErrorAction SilentlyContinue
+    if (-not $context) {
+        Connect-AzureAD -ErrorAction Stop
+    }
+    else {
+        Write-Host "Already connected to Azure AD as $($context.Account.Id)" -ForegroundColor Green
+    }
 }
 catch {
-    Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
+    Write-Error "Failed to connect to Azure AD: $($_.Exception.Message)"
     exit 1
 }
 
 # Get tenant information
-$tenant = Get-MgOrganization
-$tenantId = $tenant.Id
-$tenantName = $tenant.DisplayName
-
-Write-Host "Retrieving all application registrations from tenant: $tenantName ($tenantId)..." -ForegroundColor Yellow
-
-# Retrieve all applications with all properties
-$applications = @()
 try {
-    $apps = Get-MgApplication -All -Property "*" -ErrorAction Stop
-    Write-Host "Found $($apps.Count) application registrations" -ForegroundColor Green
+    $tenant = Get-AzureADTenantDetail
+    $tenantId = $tenant.ObjectId
+    $tenantName = $tenant.DisplayName
+    Write-Host "Connected to tenant: $tenantName ($tenantId)" -ForegroundColor Green
+}
+catch {
+    Write-Warning "Could not retrieve tenant details: $($_.Exception.Message)"
+    $tenantId = "Unknown"
+    $tenantName = "Unknown"
+}
+
+Write-Host "Retrieving all application registrations..." -ForegroundColor Yellow
+
+# Retrieve all applications
+try {
+    $applications = Get-AzureADApplication -All $true -ErrorAction Stop
+    Write-Host "Found $($applications.Count) application registrations" -ForegroundColor Green
 }
 catch {
     Write-Error "Failed to retrieve applications: $($_.Exception.Message)"
-    Disconnect-MgGraph
+    Disconnect-AzureAD
     exit 1
 }
 
-# Process each application to get additional information
+# Process each application to get complete information
 $processedApps = @()
 $appCount = 0
 
-foreach ($app in $apps) {
+foreach ($app in $applications) {
     $appCount++
-    Write-Progress -Activity "Processing Applications" -Status "Processing $($app.DisplayName) ($appCount/$($apps.Count))" -PercentComplete (($appCount / $apps.Count) * 100)
+    Write-Progress -Activity "Processing Applications" -Status "Processing $($app.DisplayName) ($appCount/$($applications.Count))" -PercentComplete (($appCount / $applications.Count) * 100)
     
-    # Create a custom object with all app properties
-    $appObject = @{
-        Id = $app.Id
-        AppId = $app.AppId
-        DisplayName = $app.DisplayName
-        Description = $app.Description
-        SignInAudience = $app.SignInAudience
-        CreatedDateTime = $app.CreatedDateTime
-        PublisherDomain = $app.PublisherDomain
-        IdentifierUris = $app.IdentifierUris
-        Web = $app.Web
-        Spa = $app.Spa
-        PublicClient = $app.PublicClient
-        AppRoles = $app.AppRoles
-        Info = $app.Info
-        KeyCredentials = $app.KeyCredentials
-        PasswordCredentials = $app.PasswordCredentials
-        RequiredResourceAccess = $app.RequiredResourceAccess
-        Api = $app.Api
-        Oauth2RequirePostResponse = $app.Oauth2RequirePostResponse
-        OptionalClaims = $app.OptionalClaims
-        GroupMembershipClaims = $app.GroupMembershipClaims
-        Tags = $app.Tags
-        TokenEncryptionKeyId = $app.TokenEncryptionKeyId
-        VerifiedPublisher = $app.VerifiedPublisher
-        IsFallbackPublicClient = $app.IsFallbackPublicClient
-        Notes = $app.Notes
-        Logo = if ($app.Logo) { "Present" } else { "Not present" }
-    }
-
-    # Get application owners
     try {
-        $owners = Get-MgApplicationOwner -ApplicationId $app.Id -ErrorAction SilentlyContinue
-        $appObject.Owners = @($owners | ForEach-Object {
-            @{
-                Id = $_.Id
-                DisplayName = $_.AdditionalProperties.displayName
-                UserPrincipalName = $_.AdditionalProperties.userPrincipalName
-                UserType = $_.AdditionalProperties.userType
-            }
-        })
-    }
-    catch {
-        $appObject.Owners = @("Error retrieving owners: $($_.Exception.Message)")
-    }
-
-    # Get service principal for additional info
-    try {
-        $servicePrincipal = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
-        if ($servicePrincipal) {
-            $appObject.ServicePrincipal = @{
-                Id = $servicePrincipal.Id
-                DisplayName = $servicePrincipal.DisplayName
-                AppDisplayName = $servicePrincipal.AppDisplayName
-                AppOwnerOrganizationId = $servicePrincipal.AppOwnerOrganizationId
-                AppRoleAssignmentRequired = $servicePrincipal.AppRoleAssignmentRequired
-                AccountEnabled = $servicePrincipal.AccountEnabled
-                AlternativeNames = $servicePrincipal.AlternativeNames
-                ServicePrincipalType = $servicePrincipal.ServicePrincipalType
-                SignInAudience = $servicePrincipal.SignInAudience
+        # Get the complete application object with all properties
+        $fullApp = Get-AzureADApplication -ObjectId $app.ObjectId
+        
+        # Get application owners
+        $owners = @()
+        try {
+            $ownerObjects = Get-AzureADApplicationOwner -ObjectId $app.ObjectId -ErrorAction SilentlyContinue
+            $owners = @($ownerObjects | ForEach-Object {
+                @{
+                    ObjectId = $_.ObjectId
+                    DisplayName = $_.DisplayName
+                    UserPrincipalName = $_.UserPrincipalName
+                    UserType = $_.UserType
+                }
+            })
+        }
+        catch {
+            $owners = @("Error retrieving owners: $($_.Exception.Message)")
+        }
+        
+        # Get service principal information
+        $servicePrincipal = $null
+        try {
+            $sp = Get-AzureADServicePrincipal -Filter "AppId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
+            if ($sp) {
+                $servicePrincipal = @{
+                    ObjectId = $sp.ObjectId
+                    DisplayName = $sp.DisplayName
+                    AppDisplayName = $sp.AppDisplayName
+                    AccountEnabled = $sp.AccountEnabled
+                    ServicePrincipalType = $sp.ServicePrincipalType
+                }
             }
         }
+        catch {
+            $servicePrincipal = "Error retrieving service principal: $($_.Exception.Message)"
+        }
+        
+        # Create application object with all properties
+        $appObject = @{
+            ObjectId = $fullApp.ObjectId
+            AppId = $fullApp.AppId
+            DisplayName = $fullApp.DisplayName
+            Description = $fullApp.Description
+            PublisherDomain = $fullApp.PublisherDomain
+            SignInAudience = $fullApp.SignInAudience
+            IdentifierUris = $fullApp.IdentifierUris
+            ReplyUrls = $fullApp.ReplyUrls
+            LogoutUrl = $fullApp.LogoutUrl
+            Oauth2AllowImplicitFlow = $fullApp.Oauth2AllowImplicitFlow
+            Oauth2AllowUrlPathMatching = $fullApp.Oauth2AllowUrlPathMatching
+            Oauth2Permissions = $fullApp.Oauth2Permissions
+            AppRoles = $fullApp.AppRoles
+            OptionalClaims = $fullApp.OptionalClaims
+            SamlMetadataUrl = $fullApp.SamlMetadataUrl
+            PasswordCredentials = if ($IncludeSecretsInfo) { $fullApp.PasswordCredentials } else { "REDACTED" }
+            KeyCredentials = if ($IncludeSecretsInfo) { $fullApp.KeyCredentials } else { "REDACTED" }
+            RequiredResourceAccess = $fullApp.RequiredResourceAccess
+            GroupMembershipClaims = $fullApp.GroupMembershipClaims
+            AcceptMappedClaims = $fullApp.AcceptMappedClaims
+            KnownClientApplications = $fullApp.KnownClientApplications
+            PreAuthorizedApplications = $fullApp.PreAuthorizedApplications
+            RecordConsentConditions = $fullApp.RecordConsentConditions
+            Oauth2Permissions = $fullApp.Oauth2Permissions
+            InformationalUrls = $fullApp.InformationalUrls
+            Owners = $owners
+            ServicePrincipal = $servicePrincipal
+        }
+        
+        $processedApps += $appObject
     }
     catch {
-        $appObject.ServicePrincipal = "Error retrieving service principal: $($_.Exception.Message)"
+        Write-Warning "Failed to process application $($app.DisplayName): $($_.Exception.Message)"
+        # Add basic app info even if full processing fails
+        $processedApps += @{
+            ObjectId = $app.ObjectId
+            AppId = $app.AppId
+            DisplayName = $app.DisplayName
+            Error = "Failed to retrieve complete information: $($_.Exception.Message)"
+        }
     }
-
-    $processedApps += $appObject
 }
 
 # Create final export object
@@ -153,14 +198,28 @@ catch {
     Write-Error "Failed to export to JSON: $($_.Exception.Message)"
 }
 
-# Disconnect from Microsoft Graph
-Disconnect-MgGraph
-Write-Host "Disconnected from Microsoft Graph" -ForegroundColor Yellow
+# Disconnect from Azure AD
+try {
+    Disconnect-AzureAD -ErrorAction SilentlyContinue
+    Write-Host "Disconnected from Azure AD" -ForegroundColor Yellow
+}
+catch {
+    Write-Warning "Error disconnecting from Azure AD: $($_.Exception.Message)"
+}
 
 # Show sample of the exported data
 if (Test-Path $OutputFile) {
     Write-Host "`nSample of exported data:" -ForegroundColor Cyan
-    $sampleData = Get-Content $OutputFile -Raw | ConvertFrom-Json
-    Write-Host "First application:" -ForegroundColor Yellow
-    $sampleData.Applications[0] | Select-Object DisplayName, AppId, CreatedDateTime, SignInAudience | Format-List
+    try {
+        $sampleData = Get-Content $OutputFile -Raw | ConvertFrom-Json
+        if ($sampleData.Applications.Count -gt 0) {
+            Write-Host "First application:" -ForegroundColor Yellow
+            $sampleData.Applications[0] | Select-Object DisplayName, AppId, ObjectId, SignInAudience | Format-List
+        }
+    }
+    catch {
+        Write-Warning "Could not display sample data: $($_.Exception.Message)"
+    }
 }
+
+Write-Host "`nExport completed successfully!" -ForegroundColor Green
