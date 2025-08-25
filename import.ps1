@@ -1,119 +1,166 @@
 <#
 .SYNOPSIS
-    Exports Azure AD App Registrations to Terraform HCL configuration
+    Exports all Azure AD App Registrations with all properties to a JSON file
 .DESCRIPTION
-    This script exports all Azure AD application registrations to Terraform HCL files,
-    including secrets, certificates, API permissions, and other configurations.
-.PARAMETER OutputDirectory
-    Directory where Terraform files will be saved (default: .\terraform-app-registrations)
-.PARAMETER SplitFiles
-    Whether to split output into multiple files (default: $true)
-.PARAMETER IncludeSecrets
-    Whether to include client secrets in output (use with caution, as they will be in plain text)
+    This script connects to Microsoft Graph, retrieves all application registrations
+    with their complete set of properties, and exports them to a JSON file.
+.PARAMETER OutputFile
+    Path to the output JSON file (default: .\app-registrations-export.json)
+.PARAMETER IncludeAllProperties
+    Whether to include all available properties (default: $true)
 #>
 
 param(
-    [string]$OutputDirectory = ".\terraform-app-registrations",
-    [bool]$SplitFiles = $true,
-    [bool]$IncludeSecrets = $false
+    [string]$OutputFile = ".\app-registrations-export.json",
+    [bool]$IncludeAllProperties = $true
 )
 
-# Check if AzureAD module is installed
-if (-not (Get-Module -ListAvailable -Name AzureAD)) {
-    Write-Host "Installing AzureAD module..." -ForegroundColor Yellow
-    Install-Module -Name AzureAD -Force -Scope CurrentUser
+# Check if Microsoft.Graph module is installed
+if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
+    Write-Host "Installing Microsoft.Graph module..." -ForegroundColor Yellow
+    Install-Module -Name Microsoft.Graph -Force -Scope CurrentUser
 }
 
-# Import AzureAD module
-Import-Module AzureAD
+# Import required Microsoft.Graph modules
+Import-Module Microsoft.Graph.Applications
+Import-Module Microsoft.Graph.Users
 
-# Connect to Azure AD
+# Connect to Microsoft Graph with required permissions
 try {
-    $context = Get-AzureADCurrentSessionInfo -ErrorAction SilentlyContinue
-    if (-not $context) {
-        Write-Host "Connecting to Azure AD..." -ForegroundColor Yellow
-        Connect-AzureAD
-    }
-    else {
-        Write-Host "Already connected to Azure AD as $($context.Account.Id)" -ForegroundColor Green
-    }
+    Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Yellow
+    Connect-MgGraph -Scopes "Application.Read.All", "User.Read.All", "Directory.Read.All" -ErrorAction Stop
+    Write-Host "Connected to Microsoft Graph successfully" -ForegroundColor Green
 }
 catch {
-    Write-Error "Failed to connect to Azure AD: $($_.Exception.Message)"
+    Write-Error "Failed to connect to Microsoft Graph: $($_.Exception.Message)"
     exit 1
 }
 
-# Create output directory if it doesn't exist
-if (-not (Test-Path $OutputDirectory)) {
-    New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
+# Get tenant information
+$tenant = Get-MgOrganization
+$tenantId = $tenant.Id
+$tenantName = $tenant.DisplayName
+
+Write-Host "Retrieving all application registrations from tenant: $tenantName ($tenantId)..." -ForegroundColor Yellow
+
+# Retrieve all applications with all properties
+$applications = @()
+try {
+    $apps = Get-MgApplication -All -Property "*" -ErrorAction Stop
+    Write-Host "Found $($apps.Count) application registrations" -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to retrieve applications: $($_.Exception.Message)"
+    Disconnect-MgGraph
+    exit 1
 }
 
-# Get all applications
-Write-Host "Retrieving all application registrations..." -ForegroundColor Yellow
-$applications = Get-AzureADApplication -All $true
-
-Write-Host "Found $($applications.Count) applications" -ForegroundColor Green
-
-# Terraform main file content
-$mainTerraformContent = @()
-$mainTerraformContent += "# Terraform configuration for Azure AD App Registrations"
-$mainTerraformContent += "# Generated on: $(Get-Date)"
-$mainTerraformContent += "# Total applications: $($applications.Count)"
-$mainTerraformContent += ""
-$mainTerraformContent += "terraform {"
-$mainTerraformContent += "  required_providers {"
-$mainTerraformContent += "    azuread = {"
-$mainTerraformContent += "      source  = `"hashicorp/azuread`""
-$mainTerraformContent += "      version = `"~> 2.0`""
-$mainTerraformContent += "    }"
-$mainTerraformContent += "  }"
-$mainTerraformContent += "}"
-$mainTerraformContent += ""
-$mainTerraformContent += "provider `"azuread`" {"
-$mainTerraformContent += "  # Configure the Azure AD provider"
-$mainTerraformContent += "  # tenant_id = `"your-tenant-id`" # Uncomment and set if needed"
-$mainTerraformContent += "}"
-$mainTerraformContent += ""
-
-# Process each application
+# Process each application to get additional information
+$processedApps = @()
 $appCount = 0
-foreach ($app in $applications) {
+
+foreach ($app in $apps) {
     $appCount++
-    Write-Progress -Activity "Processing Applications" -Status "Processing $($app.DisplayName) ($appCount/$($applications.Count))" -PercentComplete (($appCount / $applications.Count) * 100)
+    Write-Progress -Activity "Processing Applications" -Status "Processing $($app.DisplayName) ($appCount/$($apps.Count))" -PercentComplete (($appCount / $apps.Count) * 100)
     
-    # Sanitize app name for Terraform resource name
-    $resourceName = ($app.DisplayName -replace '[^a-zA-Z0-9_]', '_' -replace '_+', '_').Trim('_')
-    if ([string]::IsNullOrEmpty($resourceName)) {
-        $resourceName = "app_$($app.ObjectId.Replace('-', '_'))"
+    # Create a custom object with all app properties
+    $appObject = @{
+        Id = $app.Id
+        AppId = $app.AppId
+        DisplayName = $app.DisplayName
+        Description = $app.Description
+        SignInAudience = $app.SignInAudience
+        CreatedDateTime = $app.CreatedDateTime
+        PublisherDomain = $app.PublisherDomain
+        IdentifierUris = $app.IdentifierUris
+        Web = $app.Web
+        Spa = $app.Spa
+        PublicClient = $app.PublicClient
+        AppRoles = $app.AppRoles
+        Info = $app.Info
+        KeyCredentials = $app.KeyCredentials
+        PasswordCredentials = $app.PasswordCredentials
+        RequiredResourceAccess = $app.RequiredResourceAccess
+        Api = $app.Api
+        Oauth2RequirePostResponse = $app.Oauth2RequirePostResponse
+        OptionalClaims = $app.OptionalClaims
+        GroupMembershipClaims = $app.GroupMembershipClaims
+        Tags = $app.Tags
+        TokenEncryptionKeyId = $app.TokenEncryptionKeyId
+        VerifiedPublisher = $app.VerifiedPublisher
+        IsFallbackPublicClient = $app.IsFallbackPublicClient
+        Notes = $app.Notes
+        Logo = if ($app.Logo) { "Present" } else { "Not present" }
     }
-    
-    # Get app owners
-    $owners = Get-AzureADApplicationOwner -ObjectId $app.ObjectId
-    
-    # Get password credentials (secrets)
-    $passwordCredentials = @()
-    if ($IncludeSecrets) {
-        $passwordCredentials = $app.PasswordCredentials | ForEach-Object {
+
+    # Get application owners
+    try {
+        $owners = Get-MgApplicationOwner -ApplicationId $app.Id -ErrorAction SilentlyContinue
+        $appObject.Owners = @($owners | ForEach-Object {
             @{
-                displayName = $_.CustomKeyIdentifier
-                startDate   = $_.StartDate.ToString("o")
-                endDate     = $_.EndDate.ToString("o")
-                value       = "REDACTED" # Secrets cannot be retrieved after creation
+                Id = $_.Id
+                DisplayName = $_.AdditionalProperties.displayName
+                UserPrincipalName = $_.AdditionalProperties.userPrincipalName
+                UserType = $_.AdditionalProperties.userType
+            }
+        })
+    }
+    catch {
+        $appObject.Owners = @("Error retrieving owners: $($_.Exception.Message)")
+    }
+
+    # Get service principal for additional info
+    try {
+        $servicePrincipal = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
+        if ($servicePrincipal) {
+            $appObject.ServicePrincipal = @{
+                Id = $servicePrincipal.Id
+                DisplayName = $servicePrincipal.DisplayName
+                AppDisplayName = $servicePrincipal.AppDisplayName
+                AppOwnerOrganizationId = $servicePrincipal.AppOwnerOrganizationId
+                AppRoleAssignmentRequired = $servicePrincipal.AppRoleAssignmentRequired
+                AccountEnabled = $servicePrincipal.AccountEnabled
+                AlternativeNames = $servicePrincipal.AlternativeNames
+                ServicePrincipalType = $servicePrincipal.ServicePrincipalType
+                SignInAudience = $servicePrincipal.SignInAudience
             }
         }
     }
-    
-    # Get key credentials (certificates)
-    $keyCredentials = $app.KeyCredentials | ForEach-Object {
-        @{
-            displayName = $_.CustomKeyIdentifier
-            startDate   = $_.StartDate.ToString("o")
-            endDate     = $_.EndDate.ToString("o")
-            type        = $_.Type
-            usage       = $_.Usage
-        }
+    catch {
+        $appObject.ServicePrincipal = "Error retrieving service principal: $($_.Exception.Message)"
     }
-    
-    # Get API permissions
-    $requiredResourceAccess = @()
-   
+
+    $processedApps += $appObject
+}
+
+# Create final export object
+$exportData = @{
+    ExportDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    TenantId = $tenantId
+    TenantName = $tenantName
+    TotalApplications = $processedApps.Count
+    Applications = $processedApps
+}
+
+# Export to JSON file
+try {
+    $jsonContent = $exportData | ConvertTo-Json -Depth 10
+    $jsonContent | Out-File -FilePath $OutputFile -Encoding UTF8
+    Write-Host "Successfully exported $($processedApps.Count) applications to: $OutputFile" -ForegroundColor Green
+    Write-Host "File size: $([math]::Round((Get-Item $OutputFile).Length/1KB, 2)) KB" -ForegroundColor Green
+}
+catch {
+    Write-Error "Failed to export to JSON: $($_.Exception.Message)"
+}
+
+# Disconnect from Microsoft Graph
+Disconnect-MgGraph
+Write-Host "Disconnected from Microsoft Graph" -ForegroundColor Yellow
+
+# Show sample of the exported data
+if (Test-Path $OutputFile) {
+    Write-Host "`nSample of exported data:" -ForegroundColor Cyan
+    $sampleData = Get-Content $OutputFile -Raw | ConvertFrom-Json
+    Write-Host "First application:" -ForegroundColor Yellow
+    $sampleData.Applications[0] | Select-Object DisplayName, AppId, CreatedDateTime, SignInAudience | Format-List
+}
