@@ -205,7 +205,6 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 
 ---
 
-
 ```mermaid
 flowchart TD
     A["Start: Identify Azure Service Used"] --> B["Gather Business SLA Requirement"]
@@ -227,6 +226,6 @@ flowchart TD
     L --> M["End: Finalize Findings & Next Steps"]
 
 
----
+
 
 
