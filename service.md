@@ -180,8 +180,7 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 
 ---
 
-
-## 9. Decision Flow for SLA & Multi-Region Strategy
+## 9. Findings & Recommendations
 - **Key Gaps**: (placeholder)  
 - **High Risk Services**: (placeholder)  
 - **Multi-Region DR Candidates**: (placeholder)  
@@ -189,6 +188,13 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 
 ---
 
+## 10. Decision Flow for SLA & Multi-Region Strategy
+- **Key Gaps**: (placeholder)  
+- **High Risk Services**: (placeholder)  
+- **Multi-Region DR Candidates**: (placeholder)  
+- **Final Recommendations**: (placeholder)  
+
+---
 
 ## SLA Strategy by Azure Service
 
@@ -230,3 +236,4 @@ flowchart TD
 
 
 ```mermaid
+
