@@ -1,8 +1,33 @@
 # Azure Services SLA & Multi-Region DR Assessment
 
 ## 1. Introduction
-This document provides an overview of Azure services in use across business units, their SLA requirements, comparison with Microsoft’s published SLAs, and identification of gaps and opportunities. It also includes a decision framework for Multi-Region Disaster Recovery (DR) strategy.
+This document serves as a central reference point for understanding the availability, resiliency, and disaster recovery (DR) posture of all Azure services currently in use (or planned to be used) by our business units.
 
+Modern enterprises rely heavily on cloud services to deliver mission-critical applications. However, each Azure service comes with its own Service Level Agreement (SLA) and resiliency capabilities. At the same time, our business units define their own SLA expectations, often in terms of availability, Recovery Point Objective (RPO), and Recovery Time Objective (RTO).
+
+The purpose of this document is to:
+
+✅ List all relevant Azure services and identify which ones are used by our business units.
+
+✅ Capture business unit SLA requirements (availability, RPO, RTO) for each service.
+
+✅ Compare business expectations with Microsoft’s published SLAs for these services.
+
+✅ Identify gaps or risks where business requirements exceed Microsoft’s guarantees.
+
+✅ Provide recommendations for multi-region deployment, failover strategies, or architecture adjustments to meet enterprise resiliency needs.
+
+✅ Serve as a decision framework for aligning technology capabilities with business continuity requirements.
+
+This document will evolve over time as:
+
+New Azure services are onboarded.
+
+Microsoft updates SLAs or introduces new resiliency options.
+
+Business SLA requirements change due to compliance, risk appetite, or strategic shifts.
+
+Ultimately, the goal is to ensure that our cloud service availability and disaster recovery strategy align with business expectations and compliance obligations.
 ---
 
 ## 2. Business Units Covered
