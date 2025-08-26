@@ -195,7 +195,7 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 - **Final Recommendations**: (placeholder)  
 
 ---
-
+## Decision Flow for SLA & Multi-Region Strategy
 ```mermaid
 flowchart TD
     A["Start: Identify Azure Service Used"] --> B["Gather Business SLA Requirement"]
