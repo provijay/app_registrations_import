@@ -186,9 +186,6 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 - **Multi-Region DR Candidates**: (placeholder)  
 - **Final Recommendations**: (placeholder)  
 
----
-
-## Decision Flow for SLA & Multi-Region Strategy
 ```mermaid
 flowchart TD
     A["Start: Identify Azure Service Used"] --> B["Gather Business SLA Requirement"]
@@ -208,3 +205,11 @@ flowchart TD
     I --> L["Document Recommendation & Risk"]
     K --> L
     L --> M["End: Finalize Findings & Next Steps"]
+
+---
+
+## 10. Findings & Recommendations
+- **Key Gaps**: (placeholder)  
+- **High Risk Services**: (placeholder)  
+- **Multi-Region DR Candidates**: (placeholder)  
+- **Final Recommendations**: (placeholder)  
