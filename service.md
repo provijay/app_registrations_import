@@ -179,7 +179,7 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 | Cost vs. Risk            | Is multi-region cost justified by risk reduction? | If Yes → Proceed; else accept risk |
 
 ---
-## 🔄 Decision Flow for SLA & Multi-Region Strategy
+##  Decision Flow for SLA & Multi-Region Strategy
 
 ```mermaid
 flowchart TD
@@ -204,15 +204,10 @@ flowchart TD
 
 ---
 
-3. Save the page → GitHub will automatically render the flowchart. ✅  
-
 ---
 
 ## 2️⃣ Mapping SLA Decisions to Azure Services  
 
-Here’s a **service mapping table** you can add below the flowchart for quick reference:  
-
-```markdown
 ## 📌 SLA Strategy by Azure Service
 
 | Azure Service          | SLA Strategy Recommendation                                                                 |
