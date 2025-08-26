@@ -41,27 +41,98 @@ Ultimately, the goal is to ensure that our cloud service availability and disast
 
 ## 3. Azure Services Inventory
 > Tick (`✔`) which services are used by each business unit.  
+# Azure Services Inventory
+> Tick (`✔`) which services are used by each business unit.  
 
-| Azure Service               | Finance | Operations | Sales & Marketing | HR & Internal IT | Notes |
-|-----------------------------|---------|------------|------------------|-----------------|-------|
-| Azure Virtual Machines      | ✔       | ✔          |                  |                 | Core compute workloads |
-| Azure SQL Database          | ✔       |            | ✔                |                 | Financial & customer data |
-| Azure Storage               | ✔       | ✔          | ✔                | ✔               | Blob/File/Queue/Table |
-| Azure Kubernetes Service    |         | ✔          |                  |                 | Containerized apps |
-| Azure App Service           | ✔       |            | ✔                |                 | Web apps |
-| Azure Functions             |         | ✔          |                  |                 | Event-driven workloads |
-| Azure VPN Gateway           | ✔       | ✔          |                  |                 | Connectivity |
-| Azure Key Vault             | ✔       | ✔          | ✔                | ✔               | Secrets, keys, certs |
-| Azure Monitor & Log Analytics | ✔     | ✔          | ✔                | ✔               | Observability |
-| Azure Backup & Site Recovery | ✔      | ✔          |                  | ✔               | DR & backup |
-| Azure Active Directory      | ✔       | ✔          | ✔                | ✔               | Identity & access |
-| Azure Synapse Analytics     | ✔       |            | ✔                |                 | BI & analytics |
-| Power BI Embedded           |         |            | ✔                |                 | Sales dashboards |
-| Azure API Management        | ✔       | ✔          | ✔                |                 | Integration services |
-| Azure Service Bus           | ✔       | ✔          |                  |                 | Messaging |
-| Azure Application Gateway (WAF) | ✔   | ✔          | ✔                |                 | Web traffic management |
-| Azure Front Door            | ✔       | ✔          | ✔                |                 | Global load balancing |
-| *(continue full Azure catalog…)* |     |            |                  |                 | |
+| Azure Service                        | Finance | Operations | Sales & Marketing | HR & Internal IT | Notes |
+|-------------------------------------|---------|------------|------------------|-----------------|-------|
+| **Compute**                          |         |            |                  |                 |       |
+| Azure Virtual Machines               |         |            |                  |                 | Core compute workloads |
+| Azure App Service                     |         |            |                  |                 | Web apps |
+| Azure Kubernetes Service (AKS)       |         |            |                  |                 | Containerized apps |
+| Azure Functions                       |         |            |                  |                 | Event-driven workloads |
+| Azure Container Instances             |         |            |                  |                 | Short-lived containers |
+| Azure Container Apps                  |         |            |                  |                 | Managed container apps |
+| Azure Service Fabric                  |         |            |                  |                 | Microservices platform |
+| **Storage**                           |         |            |                  |                 |       |
+| Azure Blob Storage                     |         |            |                  |                 | Object storage |
+| Azure Disk Storage                     |         |            |                  |                 | Persistent disk for VMs |
+| Azure File Storage                     |         |            |                  |                 | SMB file shares |
+| Azure Queue Storage                    |         |            |                  |                 | Messaging queue |
+| Azure Table Storage                    |         |            |                  |                 | NoSQL key-value store |
+| Azure Data Lake Storage Gen2           |         |            |                  |                 | Big data analytics storage |
+| Azure NetApp Files                     |         |            |                  |                 | Enterprise file storage |
+| **Networking**                         |         |            |                  |                 |       |
+| Azure Virtual Network                  |         |            |                  |                 | Network backbone |
+| Azure Load Balancer                     |         |            |                  |                 | L4 traffic balancing |
+| Azure Application Gateway (WAF)       |         |            |                  |                 | L7 traffic & security |
+| Azure VPN Gateway                      |         |            |                  |                 | Connectivity |
+| Azure ExpressRoute                     |         |            |                  |                 | Private connectivity |
+| Azure Front Door                        |         |            |                  |                 | Global load balancing |
+| Azure Traffic Manager                  |         |            |                  |                 | DNS-based routing |
+| Azure DNS                              |         |            |                  |                 | Domain management |
+| Azure Bastion                           |         |            |                  |                 | Secure RDP/SSH |
+| Azure Firewall                          |         |            |                  |                 | Network security |
+| Azure DDoS Protection                   |         |            |                  |                 | DDoS mitigation |
+| Azure Private Link                      |         |            |                  |                 | Private endpoint connectivity |
+| Azure Route Server                      |         |            |                  |                 | Dynamic routing |
+| **Security & Identity**                 |         |            |                  |                 |       |
+| Azure Active Directory (AAD)           |         |            |                  |                 | Identity & access |
+| Azure AD B2C                            |         |            |                  |                 | Consumer identity |
+| Azure AD B2B                            |         |            |                  |                 | External partners |
+| Azure AD Domain Services                |         |            |                  |                 | Domain-join support |
+| Azure Key Vault                          |         |            |                  |                 | Secrets, keys, certs |
+| Azure Security Center / Defender        |         |            |                  |                 | Threat detection |
+| Azure Sentinel                           |         |            |                  |                 | SIEM & analytics |
+| **Databases**                           |         |            |                  |                 |       |
+| Azure SQL Database                       |         |            |                  |                 | Relational database |
+| Azure SQL Managed Instance               |         |            |                  |                 | Managed instance SQL |
+| Azure SQL Hyperscale                     |         |            |                  |                 | High-volume SQL |
+| Azure Cosmos DB                          |         |            |                  |                 | Multi-model NoSQL DB |
+| Azure Database for MySQL                 |         |            |                  |                 | Managed MySQL DB |
+| Azure Database for PostgreSQL            |         |            |                  |                 | Managed PostgreSQL DB |
+| Azure Database for MariaDB               |         |            |                  |                 | Managed MariaDB DB |
+| Azure Synapse Analytics                  |         |            |                  |                 | Data warehouse & BI |
+| Azure Cache for Redis                     |         |            |                  |                 | In-memory caching |
+| **Integration & Messaging**              |         |            |                  |                 |       |
+| Azure Logic Apps                          |         |            |                  |                 | Workflow automation |
+| Azure Service Bus                          |         |            |                  |                 | Messaging |
+| Azure Event Grid                           |         |            |                  |                 | Event routing |
+| Azure Event Hubs                           |         |            |                  |                 | Telemetry ingestion |
+| Azure Notification Hubs                     |         |            |                  |                 | Push notifications |
+| Azure API Management                        |         |            |                  |                 | API gateway |
+| Azure SignalR Service                        |         |            |                  |                 | Real-time messaging |
+| Azure Communication Services                 |         |            |                  |                 | Chat/voice/video APIs |
+| Azure IoT Hub                                |         |            |                  |                 | IoT device management |
+| Azure IoT Central                             |         |            |                  |                 | IoT SaaS platform |
+| Azure Digital Twins                            |         |            |                  |                 | Digital modeling |
+| Azure Time Series Insights                     |         |            |                  |                 | Time series analytics |
+| **Analytics & AI**                              |         |            |                  |                 |       |
+| Azure Machine Learning                           |         |            |                  |                 | Model training & deployment |
+| Azure Cognitive Services                          |         |            |                  |                 | Prebuilt AI APIs |
+| Azure Databricks                                  |         |            |                  |                 | Big data analytics & AI |
+| Azure HDInsight                                   |         |            |                  |                 | Hadoop / Spark |
+| Azure Data Factory                                |         |            |                  |                 | ETL workflows |
+| Azure Stream Analytics                             |         |            |                  |                 | Real-time analytics |
+| **DevOps & Monitoring**                             |         |            |                  |                 |       |
+| Azure DevOps                                      |         |            |                  |                 | CI/CD & repos |
+| Azure DevTest Labs                                 |         |            |                  |                 | Testing environments |
+| Azure App Configuration                            |         |            |                  |                 | App settings |
+| Azure Monitor / Application Insights / Log Analytics | |          |                  |                 | Observability |
+| Azure Automation                                   |         |            |                  |                 | Process automation |
+| Azure Policy / Blueprints                           |         |            |                  |                 | Governance & compliance |
+| Azure Resource Manager / Resource Graph             |         |            |                  |                 | Resource management |
+| **Backup & Disaster Recovery**                       |         |            |                  |                 |       |
+| Azure Backup                                       |         |            |                  |                 | Backup service |
+| Azure Site Recovery                                |         |            |                  |                 | Multi-region DR |
+| **Hybrid & Multicloud**                             |         |            |                  |                 |       |
+| Azure Arc                                         |         |            |                  |                 | Hybrid resource management |
+| Azure Stack HCI / Hub / Edge                       |         |            |                  |                 | On-prem integration |
+| Azure VMware Solution                               |         |            |                  |                 | VMware workloads in Azure |
+| **Other / Misc**                                    |         |            |                  |                 |       |
+| Power BI Embedded                                   |         |            |                  |                 | BI dashboards |
+| (Continue adding additional Azure services…)       |         |            |                  |                 |       |
+
 
 ---
 
@@ -69,11 +140,68 @@ Ultimately, the goal is to ensure that our cloud service availability and disast
 Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.  
 
 #### Example – Finance BU
-| Service          | Business SLA (%) | RPO Requirement | RTO Requirement | Criticality | Notes |
-|------------------|------------------|-----------------|-----------------|-------------|-------|
-| Azure SQL DB     | 99.99%           | 15 min          | 1 hr            | High        | Core financial data |
-| Azure VMs        | 99.95%           | 1 hr            | 4 hrs           | High        | Core apps |
-| Azure Storage    | 99.9%            | 30 min          | 2 hrs           | Medium      | Archive |
+# Azure Services SLA / RPO / RTO Inventory
+> Track SLA, RPO, RTO, and criticality for each Azure service.
+
+| Azure Service                         | Business SLA (%) | RPO Requirement | RTO Requirement | Criticality | Notes |
+|---------------------------------------|-----------------|----------------|----------------|-------------|-------|
+| **Compute**                           |                 |                |                |             |       |
+| Azure Virtual Machines                | 99.95%          | 1 hr           | 4 hrs          | High        | Core business applications |
+| Azure App Service                     | 99.95%          | 30 min         | 1 hr           | High        | Web apps & APIs |
+| Azure Kubernetes Service (AKS)       | 99.95%          | 15 min         | 1 hr           | High        | Containerized apps |
+| Azure Functions                       | 99.95%          | 15 min         | 1 hr           | Medium      | Event-driven workloads |
+| Azure Container Instances             | 99.95%          | 15 min         | 1 hr           | Medium      | Short-lived containers |
+| Azure Container Apps                  | 99.95%          | 15 min         | 1 hr           | Medium      | Managed container apps |
+| Azure Service Fabric                  | 99.95%          | 15 min         | 1 hr           | Medium      | Microservices platform |
+| **Storage**                           |                 |                |                |             |       |
+| Azure Blob Storage                     | 99.9%           | 30 min         | 2 hrs          | Medium      | Object storage |
+| Azure Disk Storage                     | 99.9%           | 30 min         | 2 hrs          | Medium      | Persistent disks |
+| Azure File Storage                     | 99.9%           | 30 min         | 2 hrs          | Medium      | SMB file shares |
+| Azure Queue Storage                    | 99.9%           | 30 min         | 2 hrs          | Medium      | Messaging queue |
+| Azure Table Storage                    | 99.9%           | 30 min         | 2 hrs          | Medium      | NoSQL key-value store |
+| Azure Data Lake Storage Gen2           | 99.9%           | 15 min         | 1 hr           | High        | Big data analytics storage |
+| Azure NetApp Files                     | 99.99%          | 15 min         | 30 min         | High        | Enterprise file storage |
+| **Networking**                         |                 |                |                |             |       |
+| Azure Virtual Network                  | 99.9%           | Not applicable | Not applicable | Medium      | Network backbone |
+| Azure Load Balancer                     | 99.99%          | Not applicable | Not applicable | High        | L4 traffic balancing |
+| Azure Application Gateway (WAF)       | 99.95%          | 15 min         | 1 hr           | High        | Web traffic management |
+| Azure VPN Gateway                      | 99.9%           | 15 min         | 1 hr           | High        | Connectivity |
+| Azure ExpressRoute                     | 99.95%          | 15 min         | 30 min         | High        | Private connectivity |
+| Azure Front Door                        | 99.99%          | 15 min         | 30 min         | High        | Global load balancing |
+| Azure Traffic Manager                  | 99.99%          | 15 min         | 30 min         | High        | DNS-based routing |
+| Azure DNS                              | 99.99%          | Not applicable | Not applicable | High        | Domain management |
+| Azure Bastion                           | 99.9%           | Not applicable | Not applicable | Medium      | Secure RDP/SSH |
+| Azure Firewall                          | 99.95%          | Not applicable | Not applicable | High        | Network security |
+| Azure DDoS Protection                   | 99.9%           | Not applicable | Not applicable | High        | DDoS mitigation |
+| Azure Private Link                      | 99.95%          | Not applicable | Not applicable | Medium      | Private endpoint connectivity |
+| Azure Route Server                      | 99.95%          | Not applicable | Not applicable | Medium      | Dynamic routing |
+| **Security & Identity**                 |                 |                |                |             |       |
+| Azure Active Directory (AAD)           | 99.9%           | Not applicable | Not applicable | High        | Identity & access |
+| Azure Key Vault                          | 99.9%           | 15 min         | 1 hr           | High        | Secrets, keys, certificates |
+| Azure Security Center / Defender        | 99.9%           | Not applicable | Not applicable | High        | Threat detection |
+| Azure Sentinel                           | 99.95%          | Not applicable | Not applicable | High        | SIEM & analytics |
+| **Databases**                           |                 |                |                |             |       |
+| Azure SQL Database                       | 99.99%          | 5 sec          | 30 sec         | High        | Core financial & transactional data |
+| Azure Cosmos DB                          | 99.999%         | 5 sec          | 30 sec         | Critical    | Globally distributed DB |
+| Azure Synapse Analytics                  | 99.9%           | 15 min         | 1 hr           | High        | Data warehouse & BI |
+| Azure Database for MySQL                 | 99.99%          | 15 min         | 1 hr           | High        | Managed MySQL |
+| Azure Database for PostgreSQL            | 99.99%          | 15 min         | 1 hr           | High        | Managed PostgreSQL |
+| Azure Database for MariaDB               | 99.99%          | 15 min         | 1 hr           | High        | Managed MariaDB |
+| Azure Cache for Redis                     | 99.9%           | 5 min          | 30 min         | High        | In-memory caching |
+| **Integration & Messaging**              |                 |                |                |             |       |
+| Azure Logic Apps                          | 99.95%          | 15 min         | 1 hr           | Medium      | Workflow automation |
+| Azure Service Bus                          | 99.95%          | 5 min          | 30 min         | High        | Messaging |
+| Azure Event Grid                           | 99.99%          | 1 min          | 15 min         | High        | Event routing |
+| Azure Event Hubs                           | 99.95%          | 1 min          | 30 min         | High        | Telemetry ingestion |
+| Azure API Management                        | 99.95%          | 15 min         | 1 hr           | High        | API gateway |
+| Azure IoT Hub                                | 99.95%          | 1 min          | 15 min         | High        | IoT device management |
+| **Backup & DR**                           |                 |                |                |             |       |
+| Azure Backup                               | 99.9%           | 30 min         | 2 hr           | Medium      | Backup & restore |
+| Azure Site Recovery                        | 99.9%           | 30 min         | 1 hr           | High        | Multi-region DR |
+| **DevOps & Monitoring**                     |                 |                |                |             |       |
+| Azure DevOps                                | 99.9%           | 30 min         | 2 hr           | Medium      | CI/CD & repos |
+| Azure Monitor / Application Insights / Log Analytics | 99.95% | 15 min | 1 hr | High | Observability |
+
 
 *(Repeat for each BU)*  
 
