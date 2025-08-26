@@ -1,19 +1,14 @@
-```mermaid
-flowchart TD
-    A["Start: Identify Azure Service Used"] --> B["Gather Business SLA Requirement"]
-    B --> C["Check Microsoft SLA for Service"]
-    C --> D{"Does MS SLA Meet Business SLA?"}
-    
-    D -- Yes --> E["Document SLA Match ✅"]
-    D -- No --> F["Identify SLA Gap ❌"]
-    
-    F --> G["Capture Business RPO & RTO Requirements"]
-    G --> H{"Is RPO/RTO Achievable in Single Region?"}
-    
-    H -- Yes --> I["Mitigate with Azure Native Features: ZRS / Availability Zones"]
-    H -- No --> J["Consider Multi-Region Deployment 🌍"]
-    
-    J --> K["Design with Geo-Redundancy: RA-GRS, Paired Regions, Traffic Manager, Front Door"]
-    I --> L["Document Recommendation & Risk"]
-    K --> L
-    L --> M["End: Finalize Findings & Next Steps"]
+## 📌 SLA Strategy by Azure Service
+
+| Azure Service          | SLA Strategy Recommendation                                                                 |
+|-------------------------|---------------------------------------------------------------------------------------------|
+| **App Service / API**   | Use **App Service Environment (ASE)** or **Availability Zones** for ≥99.95%. For active-active, use **Front Door**. |
+| **App Gateway**         | Deploy in **zonal configuration**. For higher SLA → pair with **Azure Front Door** for global failover. |
+| **Azure Front Door**    | Global active-active by default. Recommended for **mission-critical web workloads**.         |
+| **Traffic Manager**     | DNS-based geo-routing. Suitable for **multi-region failover** (higher RTO vs Front Door).   |
+| **Azure SQL**           | Zone redundant (ZRS) for ≥99.95%. Use **Auto-failover groups** for geo-redundancy.          |
+| **Cosmos DB**           | Enable **multi-region writes** for 99.999% SLA.                                             |
+| **Azure Storage**       | Use **ZRS** for intra-region, **RA-GRS** for cross-region DR.                               |
+| **Key Vault**           | Use **Premium tier with zone redundancy**.                                                  |
+| **AKS**                 | Deploy node pools across **Availability Zones**. Use **multi-region clusters** if SLA >99.95%. |
+| **VMs**                 | Use **Availability Sets** or **Zones** for resilience. For higher SLA → use paired region failover. |
