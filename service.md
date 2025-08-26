@@ -187,3 +187,12 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 - **Final Recommendations**: (placeholder)  
 
 ---
+
+
+## 10. Findings & Recommendations
+- **Key Gaps**: (placeholder)  
+- **High Risk Services**: (placeholder)  
+- **Multi-Region DR Candidates**: (placeholder)  
+- **Final Recommendations**: (placeholder)  
+
+---
