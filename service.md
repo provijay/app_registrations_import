@@ -188,13 +188,6 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 
 ---
 
-## 10. Findings & Recommendations
-- **Key Gaps**: (placeholder)  
-- **High Risk Services**: (placeholder)  
-- **Multi-Region DR Candidates**: (placeholder)  
-- **Final Recommendations**: (placeholder)  
-
----
 ## Decision Flow for SLA & Multi-Region Strategy
 ```mermaid
 flowchart TD
