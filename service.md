@@ -187,6 +187,7 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 - **Final Recommendations**: (placeholder)  
 
 ---
+mermaid
 flowchart TD
     A[Start: Identify Azure Service Used] --> B[Gather Business SLA Requirement]
     B --> C[Check Microsoft SLA for Service]
