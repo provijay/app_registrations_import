@@ -1,6 +1,7 @@
-Line |
-  20 |      [string]$AppsFolder = ".\apps",
-     |                            ~~~~~~~~
-     | The assignment expression is not valid. The input to an assignment   
-     | operator must be an object that is able to accept assignments, such  
-     | as a variable or a property.
+resource address "azuread_application.MPE_MS_Defender_PoC" does not exist in the configuration.
+
+Before importing this resource, please create its configuration in the root module. For example:
+
+resource "azuread_application" "MPE_MS_Defender_PoC" {
+  # (resource arguments)
+}
