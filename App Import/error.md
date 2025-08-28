@@ -1,4 +1,6 @@
 Line |
-  41 |      $tf += "resource \"azuread_application\" \"$san\" {"
-     |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Unexpected token 'azuread_application\" \"$san\" {"' in expression or statement.
+  20 |      [string]$AppsFolder = ".\apps",
+     |                            ~~~~~~~~
+     | The assignment expression is not valid. The input to an assignment   
+     | operator must be an object that is able to accept assignments, such  
+     | as a variable or a property.
