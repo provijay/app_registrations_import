@@ -5,76 +5,96 @@
 # 4-reconcile.ps1
 . .\0-prereqs-and-vars.ps1
 
-Push-Location $TerraformRoot
-# get terraform state in JSON
-Write-Host "Exporting terraform state to JSON..."
-$tfStateJson = & $TerraformCmd show -json | Out-String
-Pop-Location
+<#
+.SYNOPSIS
+    Reconcile Terraform state with Entra ID app registrations and service principals.
 
-$tfState = $tfStateJson | ConvertFrom-Json
-$appExports = Get-Content -Raw -Path $ExportAppsJson | ConvertFrom-Json
-$mapping = Import-Csv -Path $MappingCsv
+.DESCRIPTION
+    - Iterates through all exported app registration JSON files in ./apps
+    - Iterates through all exported service principal JSON files in ./serviceprincipals
+    - Checks if each resource exists in Terraform state
+    - Compares with actual Azure resources via Azure CLI
+    - Outputs discrepancies in reconciliation report
+#>
 
+param (
+    [string]$AppsFolder = ".\apps",
+    [string]$SPFolder   = ".\serviceprincipals",
+    [string]$TfFolder   = ".\tf"
+)
+
+Write-Host "=== Reconciliation Started ===" -ForegroundColor Cyan
 $report = @()
 
-foreach ($m in $mapping) {
-    $tfname = $m.tf_resource_name
-    $appObjId = $m.objectId
-    $appId = $m.applicationId
+# Load all TF state resources
+$tfResources = terraform state list 2>$null
 
-    # find Terraform resource in state by reference type + name
-    $tfResource = $tfState.values.root_module.resources | Where-Object { $_.type -eq "azuread_application" -and $_.name -eq $tfname } | Select-Object -First 1
-    if (-not $tfResource) {
-        $report += [pscustomobject]@{ tfname=$tfname; status="missing_in_state" ; note="Resource not in terraform state" }
-        continue
-    }
+if (-not $tfResources) {
+    Write-Host "⚠️ No Terraform state found or terraform init not run yet!" -ForegroundColor Yellow
+}
 
-    # find the source export by object id
-    $exportApp = $appExports | Where-Object { $_.id -eq $appObjId } | Select-Object -First 1
-    if (-not $exportApp) {
-        $report += [pscustomobject]@{ tfname=$tfname; status="missing_in_export"; note="App not found in export JSON" }
-        continue
-    }
+# ------------------------------
+# 1. Check Applications
+# ------------------------------
+if (Test-Path $AppsFolder) {
+    Get-ChildItem -Path $AppsFolder -Filter "*.json" | ForEach-Object {
+        $app = Get-Content $_.FullName | ConvertFrom-Json
+        $displayName = $app.displayName
+        $appId = $app.appId
+        $objectId = $app.id
+        $tfName = "app_$($displayName -replace '[^a-zA-Z0-9]', '_')"
 
-    # helper to extract attributes from tf state
-    $attrs = $tfResource.values
+        $tfResName = "azuread_application.$tfName"
 
-    # compare fields
-    $differences = @()
+        $existsInTf = $tfResources -contains $tfResName
 
-    if ($attrs.display_name -ne $exportApp.displayName) { $differences += "displayName" }
-    if ($attrs.sign_in_audience -ne $exportApp.signInAudience) { $differences += "sign_in_audience" }
+        # Verify with Azure CLI
+        $existsInAzure = az ad app show --id $appId --only-show-errors --query "id" -o tsv 2>$null
 
-    # compare web redirect URIs (as unordered sets)
-    $tf_web_redirects = @()
-    if ($attrs.web -ne $null -and $attrs.web.redirect_uris -ne $null) { $tf_web_redirects = $attrs.web.redirect_uris }
-    $exp_web_redirects = @()
-    if ($exportApp.web -ne $null -and $exportApp.web.redirectUris -ne $null) { $exp_web_redirects = $exportApp.web.redirectUris }
-    if ((Compare-Object -ReferenceObject $tf_web_redirects -DifferenceObject $exp_web_redirects) -ne $null) { $differences += "web.redirect_uris" }
-
-    # app roles count
-    $tf_app_roles_count = 0
-    if ($attrs.api -ne $null -and $attrs.api.app_roles -ne $null) { $tf_app_roles_count = $attrs.api.app_roles.Count }
-    $exp_app_roles_count = 0
-    if ($exportApp.api -ne $null -and $exportApp.api.appRoles -ne $null) { $exp_app_roles_count = $exportApp.api.appRoles.Count }
-    if ($tf_app_roles_count -ne $exp_app_roles_count) { $differences += "api.app_roles.count" }
-
-    # oauth2 scopes count
-    $tf_scopes_count = 0
-    if ($attrs.api -ne $null -and $attrs.api.oauth2_permission_scopes -ne $null) { $tf_scopes_count = $attrs.api.oauth2_permission_scopes.Count }
-    $exp_scopes_count = 0
-    if ($exportApp.api -ne $null -and $exportApp.api.oauth2PermissionScopes -ne $null) { $exp_scopes_count = $exportApp.api.oauth2PermissionScopes.Count }
-    if ($tf_scopes_count -ne $exp_scopes_count) { $differences += "api.oauth2_permission_scopes.count" }
-
-    if ($differences.Count -eq 0) {
-        $report += [pscustomobject]@{ tfname=$tfname; status="ok"; differences="" }
-    } else {
-        $report += [pscustomobject]@{ tfname=$tfname; status="mismatch"; differences=($differences -join "; ") }
+        $report += [PSCustomObject]@{
+            Type          = "Application"
+            DisplayName   = $displayName
+            AppId         = $appId
+            ObjectId      = $objectId
+            InTerraform   = $existsInTf
+            InAzure       = [bool]$existsInAzure
+        }
     }
 }
 
-# write report
-$reportCsv = Join-Path $WorkDir "reconcile-report.csv"
-$report | Export-Csv -Path $reportCsv -NoTypeInformation -Encoding utf8
+# ------------------------------
+# 2. Check Service Principals
+# ------------------------------
+if (Test-Path $SPFolder) {
+    Get-ChildItem -Path $SPFolder -Filter "*.json" | ForEach-Object {
+        $sp = Get-Content $_.FullName | ConvertFrom-Json
+        $appId = $sp.appId
+        $objectId = $sp.id
+        $displayName = $sp.displayName
+        $tfName = "sp_$($displayName -replace '[^a-zA-Z0-9]', '_')"
 
-Write-Host "Reconcile complete. Report: $reportCsv"
+        $tfResName = "azuread_service_principal.$tfName"
+
+        $existsInTf = $tfResources -contains $tfResName
+
+        # Verify with Azure CLI
+        $existsInAzure = az ad sp show --id $objectId --only-show-errors --query "id" -o tsv 2>$null
+
+        $report += [PSCustomObject]@{
+            Type          = "ServicePrincipal"
+            DisplayName   = $displayName
+            AppId         = $appId
+            ObjectId      = $objectId
+            InTerraform   = $existsInTf
+            InAzure       = [bool]$existsInAzure
+        }
+    }
+}
+
+# ------------------------------
+# 3. Output Report
+# ------------------------------
+$report | Format-Table -AutoSize
+
+$report | Export-Csv -Path ".\reconcile_report.csv" -NoTypeInformation -Force
+Write-Host "=== Reconciliation complete. Report saved to reconcile_report.csv ===" -ForegroundColor Green
