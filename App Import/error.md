@@ -1,4 +1,4 @@
 Line |
- 144 |  …   $spLines += "resource ""azuread_service_principal"" `""sp_$san`" {"
-     |                                                             ~~~~~~~~~
-     | Unexpected token 'sp_$san`"' in expression or statement.
+  41 |      $tf += "resource \"azuread_application\" \"$san\" {"
+     |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Unexpected token 'azuread_application\" \"$san\" {"' in expression or statement.
