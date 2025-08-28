@@ -6,60 +6,50 @@
 # terraform state. It has retries and a throttle pause.
 
 # ensure terraform init
-Push-Location $TerraformRoot
-Write-Host "Running terraform init (backend must be configured in backend.tf)..."
-& $TerraformCmd init
-Pop-Location
+# Path to generated TF files
+$tfDir = ".\generated-tf"
 
-$map = Import-Csv -Path $MappingCsv
-
-# load SPs to find service principal objectId by appId
-$spJson = Get-Content -Raw -Path $ExportSPsJson | ConvertFrom-Json
-
-# function for retry
-function Retry-Command($ScriptBlock, $Attempts, $SleepSeconds) {
-    for ($i=1; $i -le $Attempts; $i++) {
-        try {
-            & $ScriptBlock
-            return $true
-        } catch {
-            Write-Warning "Attempt $i failed: $($_.Exception.Message)"
-            if ($i -lt $Attempts) { Start-Sleep -Seconds $SleepSeconds }
-        }
-    }
-    return $false
+# Check that folder exists
+if (-not (Test-Path $tfDir)) {
+    Write-Error "TF folder not found: $tfDir"
+    exit 1
 }
 
-foreach ($row in $map) {
-    $tfname = $row.tf_resource_name
-    $appObjectId = $row.objectId
-    $appId = $row.applicationId
-    Write-Host "`nImporting application TF resource: azuread_application.$tfname -> objectId $appObjectId"
+# Get all .tf files in folder
+$tfFiles = Get-ChildItem -Path $tfDir -Filter "*.tf"
 
-    $importCmd = { & $TerraformCmd import ("azuread_application." + $tfname) $appObjectId }
-    $ok = Retry-Command $importCmd $MaxImportRetries 2
-    if (-not $ok) {
-        Write-Error "Failed to import azuread_application.$tfname after $MaxImportRetries attempts. Skipping."
-        continue
-    }
+foreach ($tfFile in $tfFiles) {
+    Write-Host "`nProcessing file: $($tfFile.Name)"
 
-    # find SP object for this appId
-    $sp = $spJson | Where-Object { $_.appId -eq $appId } | Select-Object -First 1
-    if ($sp -ne $null) {
-        $spObjectId = $sp.id
-        $spTfName = "sp_" + ($tfname -replace '^app_','')  # consistent with generator sp_<san>
-        Write-Host "Importing service principal azuread_service_principal.$spTfName -> objectId $spObjectId"
-        $importSpCmd = { & $TerraformCmd import ("azuread_service_principal." + $spTfName) $spObjectId }
-        $ok2 = Retry-Command $importSpCmd $MaxImportRetries 2
-        if (-not $ok2) {
-            Write-Warning "Failed to import SP for $tfname. Continue."
+    # Read the resource block to find resource type and name
+    $lines = Get-Content $tfFile.FullName
+    foreach ($line in $lines) {
+        if ($line -match 'resource\s+"([^"]+)"\s+"([^"]+)"') {
+            $resType = $matches[1]
+            $resName = $matches[2]
+
+            # Determine import ID from file (AppId / ObjectId)
+            # We'll read it from the json file using naming convention
+            # Assumes TF file name format: <san>-app.tf or <san>-sp.tf
+            $san = ($tfFile.BaseName -replace '-app$','' -replace '-sp$','')
+            $jsonFolder = if ($tfFile.BaseName -like '*-app') { ".\apps" } else { ".\serviceprincipals" }
+
+            # Find corresponding JSON
+            $jsonFile = Get-ChildItem -Path $jsonFolder -Filter "*$san*.json" | Select-Object -First 1
+            if (-not $jsonFile) {
+                Write-Warning "JSON file not found for $resName, skipping..."
+                continue
+            }
+
+            $jsonData = Get-Content -Raw $jsonFile.FullName | ConvertFrom-Json
+            $importId = if ($resType -eq "azuread_application") { $jsonData.objectId } else { $jsonData.objectId }
+
+            # Run terraform import
+            $importCmd = "terraform import $resType.$resName $importId"
+            Write-Host "Running: $importCmd"
+            Invoke-Expression $importCmd
         }
-    } else {
-        Write-Host "No service principal found for appId $appId (skipping SP import)."
     }
-
-    # small pause to avoid Graph throttling
-    Start-Sleep -Seconds $ImportPauseSeconds
 }
 
-Write-Host "`nImport pass complete. Now run 'terraform plan' in the Terraform root and review diffs."
+Write-Host "`n✅ All resources imported successfully."
