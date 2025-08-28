@@ -141,8 +141,10 @@ foreach ($app in $apps) {
     # also create a minimal sp TF file that references application_id
     $spFile = Join-Path $TfOutDir ("azuread_service_principal_" + $san + ".tf")
     $spLines = @()
-    $spLines += "resource ""azuread_service_principal"" `""sp_$san`" {"
-    $spLines += "  application_id = `"$($app.appId)`""
+   # $spLines += "resource ""azuread_service_principal"" `""sp_$san`" {"
+   $spLines += ('resource "azuread_service_principal" "sp_{0}" {{' -f $san)
+ 
+   $spLines += "  application_id = `"$($app.appId)`""
     $spLines += "}"
     $spLines | Out-File -FilePath $spFile -Encoding utf8
 }
