@@ -17,23 +17,33 @@
 # Output: apps.tf
 
 # Read JSON file
-$appRegs = Get-Content -Raw -Path "./appregs.json" | ConvertFrom-Json
+# Output directory for generated TF files
+$outDir = ".\generated-tf"
+if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 
-# Initialize array for TF blocks
-$tfBlocks = @()
+# Function to sanitize names for Terraform resource
+function Sanitize-Name($name) {
+    return ($name -replace '[^a-zA-Z0-9]', "_").ToLower()
+}
 
-foreach ($app in $appRegs) {
-    $appId   = $app.appId
-    $disp    = $app.displayName
-    $san     = ($disp -replace '[^a-zA-Z0-9]', "_").ToLower()
+# ----------------------------
+# Process App Registrations
+# ----------------------------
+$appFolder = ".\apps"
+$appFiles = Get-ChildItem -Path $appFolder -Filter "*.json"
 
-    # Application block
-    $tfApp  = @"
+foreach ($file in $appFiles) {
+    $app = Get-Content -Raw $file.FullName | ConvertFrom-Json
+    $san = Sanitize-Name $app.displayName
+    $tfFile = Join-Path $outDir "$san-app.tf"
+
+    $tfBlock = @"
 resource "azuread_application" "$san" {
-  display_name     = "$disp"
-  application_id   = "$appId"
+  display_name     = "$($app.displayName)"
+  application_id   = "$($app.appId)"
 
   owners = []
+
   lifecycle {
     ignore_changes = [
       owners,
@@ -46,12 +56,27 @@ resource "azuread_application" "$san" {
 }
 "@
 
-    # Service Principal block
-    $tfSp = @"
+    $tfBlock | Out-File -FilePath $tfFile -Encoding UTF8
+    Write-Host "Generated TF for App: $($app.displayName)"
+}
+
+# ----------------------------
+# Process Service Principals
+# ----------------------------
+$spFolder = ".\serviceprincipals"
+$spFiles = Get-ChildItem -Path $spFolder -Filter "*.json"
+
+foreach ($file in $spFiles) {
+    $sp = Get-Content -Raw $file.FullName | ConvertFrom-Json
+    $san = Sanitize-Name $sp.displayName
+    $tfFile = Join-Path $outDir "$san-sp.tf"
+
+    $tfBlock = @"
 resource "azuread_service_principal" "sp_$san" {
-  application_id   = azuread_application.$san.application_id
+  application_id   = "$($sp.appId)"
 
   owners = []
+
   lifecycle {
     ignore_changes = [
       owners
@@ -60,11 +85,8 @@ resource "azuread_service_principal" "sp_$san" {
 }
 "@
 
-    $tfBlocks += $tfApp
-    $tfBlocks += $tfSp
+    $tfBlock | Out-File -FilePath $tfFile -Encoding UTF8
+    Write-Host "Generated TF for SP: $($sp.displayName)"
 }
 
-# Write to TF file
-$tfBlocks -join "`n" | Out-File -FilePath "./apps.tf" -Encoding utf8
-
-Write-Host "✅ apps.tf generated with $($appRegs.Count) applications"
+Write-Host "✅ All TF files generated in $outDir"
