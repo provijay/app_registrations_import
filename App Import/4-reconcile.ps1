@@ -39,17 +39,21 @@ param (
     [string]$GeneratedFolder = ".\generated"
 )
 
-Write-Host "🔍 Looking for .tf files in $GeneratedFolder..."
-
-# Make sure folder exists
+# Ensure folder exists
 if (-Not (Test-Path $GeneratedFolder)) {
     Write-Error "❌ Folder $GeneratedFolder not found. Please check your path."
     exit 1
 }
 
-# Get all .tf files (apps + spns)
-$tfFiles = Get-ChildItem -Path $GeneratedFolder -Filter "*.tf" -Recurse
+# Initialize Terraform if needed
+if (-Not (Test-Path "$GeneratedFolder/.terraform")) {
+    Write-Host "🌱 Initializing Terraform in $GeneratedFolder..."
+    Push-Location $GeneratedFolder
+    terraform init
+    Pop-Location
+}
 
+$tfFiles = Get-ChildItem -Path $GeneratedFolder -Filter "*.tf" -Recurse
 if (-Not $tfFiles) {
     Write-Error "❌ No .tf files found in $GeneratedFolder."
     exit 1
@@ -58,10 +62,7 @@ if (-Not $tfFiles) {
 foreach ($file in $tfFiles) {
     Write-Host "📄 Processing file: $($file.FullName)"
 
-    # Read Terraform file contents
     $content = Get-Content -Path $file.FullName -Raw
-
-    # Regex match both applications and service principals
     $matches = [regex]::Matches($content, 'resource\s+"(azuread_application|azuread_service_principal)"\s+"([^"]+)"')
 
     foreach ($m in $matches) {
@@ -69,26 +70,29 @@ foreach ($file in $tfFiles) {
         $resourceName = $m.Groups[2].Value
         $resourceAddress = "$resourceType.$resourceName"
 
-        Write-Host "➡️ Checking $resourceAddress"
+        Push-Location $GeneratedFolder
 
-        # Check if already in Terraform state
+        # Check if resource is already in state
         $stateCheck = terraform state list | Select-String -Pattern $resourceAddress
-
         if ($stateCheck) {
             Write-Host "✔️ Already in state: $resourceAddress"
         } else {
-            Write-Host "⚡ Importing $resourceAddress"
-
-            # Find the object_id from the file
-            $objectIdMatch = [regex]::Match($content, 'object_id\s*=\s*"([^"]+)"')
-            if ($objectIdMatch.Success) {
-                $objectId = $objectIdMatch.Groups[1].Value
-                Write-Host "   ➡️ Running: terraform import $resourceAddress $objectId"
-                terraform import $resourceAddress $objectId
+            # Find corresponding JSON file to get objectId
+            $jsonFile = Join-Path $GeneratedFolder "$resourceName.json"
+            if (Test-Path $jsonFile) {
+                $objectId = (Get-Content $jsonFile | ConvertFrom-Json).id
+                if ($objectId) {
+                    Write-Host "⚡ Importing $resourceAddress with ID $objectId"
+                    terraform import $resourceAddress $objectId
+                } else {
+                    Write-Warning "❌ No ID found in $jsonFile"
+                }
             } else {
-                Write-Host "❌ Could not find object_id in $($file.Name) for $resourceAddress"
+                Write-Warning "❌ JSON file not found for $resourceAddress"
             }
         }
+
+        Pop-Location
     }
 }
 
