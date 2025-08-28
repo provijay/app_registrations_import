@@ -16,85 +16,37 @@
     - Compares with actual Azure resources via Azure CLI
     - Outputs discrepancies in reconciliation report
 #>
-
-param (
+param(
     [string]$AppsFolder = ".\apps",
-    [string]$SPFolder   = ".\serviceprincipals",
-    [string]$TfFolder   = ".\tf"
+    [string]$SPsFolder = ".\serviceprincipals",
+    [string]$TFOutputFolder = ".\tf"
 )
 
-Write-Host "=== Reconciliation Started ===" -ForegroundColor Cyan
-$report = @()
-
-# Load all TF state resources
-$tfResources = terraform state list 2>$null
-
-if (-not $tfResources) {
-    Write-Host "⚠️ No Terraform state found or terraform init not run yet!" -ForegroundColor Yellow
+# Make sure TF output folder exists
+if (!(Test-Path $TFOutputFolder)) {
+    New-Item -ItemType Directory -Path $TFOutputFolder | Out-Null
 }
 
-# ------------------------------
-# 1. Check Applications
-# ------------------------------
-if (Test-Path $AppsFolder) {
-    Get-ChildItem -Path $AppsFolder -Filter "*.json" | ForEach-Object {
-        $app = Get-Content $_.FullName | ConvertFrom-Json
-        $displayName = $app.displayName
-        $appId = $app.appId
-        $objectId = $app.id
-        $tfName = "app_$($displayName -replace '[^a-zA-Z0-9]', '_')"
+Write-Host "Reconciling Terraform state with Azure AD Apps and Service Principals..."
 
-        $tfResName = "azuread_application.$tfName"
+# Import applications
+$apps = Get-ChildItem -Path $AppsFolder -Filter *.json
+foreach ($app in $apps) {
+    $appJson = Get-Content $app.FullName | ConvertFrom-Json
+    $san = $appJson.displayName -replace '[^a-zA-Z0-9]', '_'
 
-        $existsInTf = $tfResources -contains $tfResName
-
-        # Verify with Azure CLI
-        $existsInAzure = az ad app show --id $appId --only-show-errors --query "id" -o tsv 2>$null
-
-        $report += [PSCustomObject]@{
-            Type          = "Application"
-            DisplayName   = $displayName
-            AppId         = $appId
-            ObjectId      = $objectId
-            InTerraform   = $existsInTf
-            InAzure       = [bool]$existsInAzure
-        }
-    }
+    Write-Host "Reconciling application: $($appJson.appId)"
+    terraform import "azuread_application.$san" $appJson.appId
 }
 
-# ------------------------------
-# 2. Check Service Principals
-# ------------------------------
-if (Test-Path $SPFolder) {
-    Get-ChildItem -Path $SPFolder -Filter "*.json" | ForEach-Object {
-        $sp = Get-Content $_.FullName | ConvertFrom-Json
-        $appId = $sp.appId
-        $objectId = $sp.id
-        $displayName = $sp.displayName
-        $tfName = "sp_$($displayName -replace '[^a-zA-Z0-9]', '_')"
+# Import service principals
+$sps = Get-ChildItem -Path $SPsFolder -Filter *.json
+foreach ($sp in $sps) {
+    $spJson = Get-Content $sp.FullName | ConvertFrom-Json
+    $san = $spJson.displayName -replace '[^a-zA-Z0-9]', '_'
 
-        $tfResName = "azuread_service_principal.$tfName"
-
-        $existsInTf = $tfResources -contains $tfResName
-
-        # Verify with Azure CLI
-        $existsInAzure = az ad sp show --id $objectId --only-show-errors --query "id" -o tsv 2>$null
-
-        $report += [PSCustomObject]@{
-            Type          = "ServicePrincipal"
-            DisplayName   = $displayName
-            AppId         = $appId
-            ObjectId      = $objectId
-            InTerraform   = $existsInTf
-            InAzure       = [bool]$existsInAzure
-        }
-    }
+    Write-Host "Reconciling service principal: $($spJson.id)"
+    terraform import "azuread_service_principal.sp_$san" $spJson.id
 }
 
-# ------------------------------
-# 3. Output Report
-# ------------------------------
-$report | Format-Table -AutoSize
-
-$report | Export-Csv -Path ".\reconcile_report.csv" -NoTypeInformation -Force
-Write-Host "=== Reconciliation complete. Report saved to reconcile_report.csv ===" -ForegroundColor Green
+Write-Host "Reconciliation complete."
