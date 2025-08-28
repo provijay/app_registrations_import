@@ -8,149 +8,115 @@
 # It writes a mapping CSV linking TF resource name to objectId and appId.
 
 
-# read exported JSON
-$apps = Get-Content -Raw -Path $ExportAppsJson | ConvertFrom-Json
+# 2-generate-tf.ps1
+# Generates .tf files for AzureAD App Registrations and Service Principals
 
-# helper to sanitize names to TF resource names
-function Sanitize-Name($n) {
-    $s = $n -replace '[^a-zA-Z0-9]', '_'          # non-alphanumeric -> _
-    $s = $s -replace '__+', '_'                   # collapse repeated underscores
-    if ($s.Length -gt 64) { $s = $s.Substring(0,64) } # avoid extremely long names
-    # ensure cannot start with digit for TF resource
-    if ($s -match '^[0-9]') { $s = "app_$s" }
-    return $s
+$appsFile  = ".\applications.json"
+$spsFile   = ".\serviceprincipals.json"
+$outDir    = ".\generated-tf"
+
+if (-not (Test-Path $appsFile)) { Write-Error "Missing $appsFile"; exit 1 }
+if (-not (Test-Path $spsFile))  { Write-Error "Missing $spsFile";  exit 1 }
+
+# Make sure output directory exists
+if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
+
+Write-Host "Reading application registrations..."
+$apps = Get-Content $appsFile | ConvertFrom-Json
+
+Write-Host "Reading service principals..."
+$sps = Get-Content $spsFile | ConvertFrom-Json
+
+# --- Function: sanitize names for TF ---
+function Sanitize-Name($name) {
+    return ($name -replace '[^a-zA-Z0-9]', "_").ToLower()
 }
 
-$mapping = @()
-
+# --- Applications ---
 foreach ($app in $apps) {
     $san = Sanitize-Name $app.displayName
-    $tfname = "app_$san"
-    $tfFile = Join-Path $TfOutDir ("azuread_application_" + $san + ".tf")
+    $tfPath = Join-Path $outDir "$san-app.tf"
 
-    $lines = @()
-    $lines += "resource ""azuread_application"" `"$tfname`" {"
-    $lines += "  display_name     = `"$($app.displayName)`""
-    if ($app.signInAudience) {
-        $lines += "  sign_in_audience = `"$($app.signInAudience)`""
-    }
+    $tf = @()
+    $tf += "resource \"azuread_application\" \"$san\" {"
+    $tf += "  display_name     = \"${app.displayName}\""
+    $tf += "  application_id   = \"${app.appId}\""
 
-    # web block
-    if ($app.web -ne $null) {
-        $redirects = @()
-        if ($app.web.redirectUris) { $redirects = $app.web.redirectUris }
-        $lines += "  web {"
-        if ($redirects.Count -gt 0) {
-            $joined = $redirects | ForEach-Object { "`"$($_)`"" } -join ", "
-            $lines += "    redirect_uris = [$joined]"
+    if ($app.identifierUris -and $app.identifierUris.Count -gt 0) {
+        $tf += "  identifier_uris = ["
+        foreach ($uri in $app.identifierUris) {
+            $tf += "    \"$uri\","
         }
-        if ($app.web.logoutUrl) { $lines += "    logout_url = `"$($app.web.logoutUrl)`"" }
-        $lines += "  }"
+        $tf += "  ]"
     }
 
-    # spa
-    if ($app.spa -ne $null -and $app.spa.redirectUris) {
-        $redirects = $app.spa.redirectUris
-        $joined = $redirects | ForEach-Object { "`"$($_)`"" } -join ", "
-        $lines += "  spa {"
-        $lines += "    redirect_uris = [$joined]"
-        $lines += "  }"
-    }
-
-    # public client (native)
-    if ($app.publicClient -ne $null -and $app.publicClient.redirectUris) {
-        $redirects = $app.publicClient.redirectUris
-        $joined = $redirects | ForEach-Object { "`"$($_)`"" } -join ", "
-        $lines += "  public_client {"
-        $lines += "    redirect_uris = [$joined]"
-        $lines += "  }"
-    }
-
-    # required_resource_access
-    if ($app.requiredResourceAccess -ne $null -and $app.requiredResourceAccess.Count -gt 0) {
-        $lines += "  required_resource_access = ["
-        foreach ($rra in $app.requiredResourceAccess) {
-            $lines += "    {"
-            $lines += "      resource_app_id = `"$($rra.resourceAppId)`""
-            $lines += "      resource_access = ["
-            foreach ($ra in $rra.resourceAccess) {
-                $lines += "        { id = `"$($ra.id)`"; type = `"$($ra.type)`" },"
-            }
-            $lines += "      ]"
-            $lines += "    },"
+    if ($app.web.redirectUris -and $app.web.redirectUris.Count -gt 0) {
+        $tf += "  web {"
+        $tf += "    redirect_uris = ["
+        foreach ($r in $app.web.redirectUris) {
+            $tf += "      \"$r\","
         }
-        $lines += "  ]"
+        $tf += "    ]"
+        $tf += "  }"
     }
 
-    # api (app roles & oauth2 permission scopes)
-    if ($app.api -ne $null) {
-        if ($app.api.oauth2PermissionScopes -ne $null -and $app.api.oauth2PermissionScopes.Count -gt 0) {
-            $lines += "  api {"
-            $lines += "    oauth2_permission_scopes = ["
-            foreach ($s in $app.api.oauth2PermissionScopes) {
-                # note: provider may compute id if not provided; we include description and other metadata
-                $displayName = $s.adminConsentDisplayName -or $s.displayName -or ""
-                $lines += "      {"
-                $lines += "        admin_consent_description = `"$($s.adminConsentDescription)`""
-                $lines += "        admin_consent_display_name = `"$($s.adminConsentDisplayName)`""
-                $lines += "        id = `"$($s.id)`""
-                $lines += "        is_enabled = $($s.isEnabled)"
-                $lines += "        type = `"$($s.type)`""
-                $lines += "        user_consent_description = `"$($s.userConsentDescription)`""
-                $lines += "        user_consent_display_name = `"$($s.userConsentDisplayName)`""
-                $lines += "        value = `"$($s.value)`""
-                $lines += "      },"
-            }
-            $lines += "    ]"
-            $lines += "  }"
-        }
-        if ($app.api.appRoles -ne $null -and $app.api.appRoles.Count -gt 0) {
-            # app roles block
-            if (-not ($app.api.oauth2PermissionScopes)) { $lines += "  api {" } # create api block if not already
-            $lines += "    app_roles = ["
-            foreach ($ar in $app.api.appRoles) {
-                $lines += "      {"
-                $lines += "        allowed_member_types = [ " + ($ar.allowedMemberTypes | ForEach-Object { "`"$($_)`"" } -join ", ") + " ]"
-                $lines += "        description = `"$($ar.description)`""
-                $lines += "        display_name = `"$($ar.displayName)`""
-                $lines += "        id = `"$($ar.id)`""
-                $lines += "        is_enabled = $($ar.isEnabled)"
-                $lines += "        value = `"$($ar.value)`""
-                $lines += "      },"
-            }
-            $lines += "    ]"
-            if (-not ($app.api.oauth2PermissionScopes)) { $lines += "  }" } else { $lines += "  }" }
+    $tf += ""
+    $tf += "  lifecycle {"
+    $tf += "    ignore_changes = ["
+    $tf += "      owners,"
+    $tf += "      required_resource_access,"
+    $tf += "    ]"
+    $tf += "  }"
+    $tf += "}"
+
+    # --- Application owners ---
+    if ($app.owners -and $app.owners.Count -gt 0) {
+        foreach ($owner in $app.owners) {
+            $ownerSan = Sanitize-Name $owner
+            $tf += ""
+            $tf += "resource \"azuread_application_owner\" \"${san}_${ownerSan}\" {"
+            $tf += "  application_object_id = azuread_application.$san.object_id"
+            $tf += "  owner_object_id       = \"$owner\""
+            $tf += "}"
         }
     }
 
-    # close resource
-    $lines += "}"
-
-    # Write TF file
-    $lines | Out-File -FilePath $tfFile -Encoding utf8
-
-    # Add mapping row (appObjectId, appId)
-    $mapping += [pscustomobject]@{
-        tf_resource_name = $tfname
-        displayName = $app.displayName
-        objectId = $app.id
-        applicationId = $app.appId
-        tf_file = $tfFile
-    }
-
-    # also create a minimal sp TF file that references application_id
-    $spFile = Join-Path $TfOutDir ("azuread_service_principal_" + $san + ".tf")
-    $spLines = @()
-   # $spLines += "resource ""azuread_service_principal"" `""sp_$san`" {"
-   $spLines += ('resource "azuread_service_principal" "sp_{0}" {{' -f $san)
- 
-   $spLines += "  application_id = `"$($app.appId)`""
-    $spLines += "}"
-    $spLines | Out-File -FilePath $spFile -Encoding utf8
+    $tf | Out-File -FilePath $tfPath -Encoding utf8
+    Write-Host "Generated: $tfPath"
 }
 
-# write mapping CSV
-$mapping | Export-Csv -Path $MappingCsv -NoTypeInformation -Encoding utf8
+# --- Service Principals ---
+foreach ($sp in $sps) {
+    $san = Sanitize-Name $sp.displayName
+    $tfPath = Join-Path $outDir "$san-sp.tf"
 
-Write-Host "TF generation completed. Files written to: $TfOutDir"
-Write-Host "Mapping CSV: $MappingCsv"
+    $tf = @()
+    $tf += "resource \"azuread_service_principal\" \"$san\" {"
+    $tf += "  application_id   = \"${sp.appId}\""
+    $tf += "  display_name     = \"${sp.displayName}\""
+
+    $tf += ""
+    $tf += "  lifecycle {"
+    $tf += "    ignore_changes = ["
+    $tf += "      owners,"
+    $tf += "    ]"
+    $tf += "  }"
+    $tf += "}"
+
+    # --- Service Principal owners ---
+    if ($sp.owners -and $sp.owners.Count -gt 0) {
+        foreach ($owner in $sp.owners) {
+            $ownerSan = Sanitize-Name $owner
+            $tf += ""
+            $tf += "resource \"azuread_service_principal_owner\" \"${san}_${ownerSan}\" {"
+            $tf += "  service_principal_object_id = azuread_service_principal.$san.object_id"
+            $tf += "  owner_object_id             = \"$owner\""
+            $tf += "}"
+        }
+    }
+
+    $tf | Out-File -FilePath $tfPath -Encoding utf8
+    Write-Host "Generated: $tfPath"
+}
+
+Write-Host "✅ TF files generated in $outDir"
