@@ -16,37 +16,80 @@
     - Compares with actual Azure resources via Azure CLI
     - Outputs discrepancies in reconciliation report
 #>
-param(
-    [string]$AppsFolder = ".\apps",
-    [string]$SPsFolder = ".\serviceprincipals",
-    [string]$TFOutputFolder = ".\tf"
+<#
+.SYNOPSIS
+    Reconciles Terraform state with exported Azure AD Applications and Service Principals.
+
+.DESCRIPTION
+    This script compares exported JSON files in the "apps" and "serviceprincipals" folders
+    with Terraform state. It ensures that all applications and service principals exist
+    in the Terraform state, importing any that are missing.
+#>
+
+<#
+.SYNOPSIS
+Reconciles Azure AD applications and service principals with Terraform state.
+
+.DESCRIPTION
+This script scans all generated Terraform files in the ./generated folder
+and attempts to run "terraform import" for each resource if it's not already in state.
+#>
+
+param (
+    [string]$GeneratedFolder = ".\generated"
 )
 
-# Make sure TF output folder exists
-if (!(Test-Path $TFOutputFolder)) {
-    New-Item -ItemType Directory -Path $TFOutputFolder | Out-Null
+Write-Host "🔍 Looking for .tf files in $GeneratedFolder..."
+
+# Make sure folder exists
+if (-Not (Test-Path $GeneratedFolder)) {
+    Write-Error "❌ Folder $GeneratedFolder not found. Please check your path."
+    exit 1
 }
 
-Write-Host "Reconciling Terraform state with Azure AD Apps and Service Principals..."
+# Get all .tf files (apps + spns)
+$tfFiles = Get-ChildItem -Path $GeneratedFolder -Filter "*.tf" -Recurse
 
-# Import applications
-$apps = Get-ChildItem -Path $AppsFolder -Filter *.json
-foreach ($app in $apps) {
-    $appJson = Get-Content $app.FullName | ConvertFrom-Json
-    $san = $appJson.displayName -replace '[^a-zA-Z0-9]', '_'
-
-    Write-Host "Reconciling application: $($appJson.appId)"
-    terraform import "azuread_application.$san" $appJson.appId
+if (-Not $tfFiles) {
+    Write-Error "❌ No .tf files found in $GeneratedFolder."
+    exit 1
 }
 
-# Import service principals
-$sps = Get-ChildItem -Path $SPsFolder -Filter *.json
-foreach ($sp in $sps) {
-    $spJson = Get-Content $sp.FullName | ConvertFrom-Json
-    $san = $spJson.displayName -replace '[^a-zA-Z0-9]', '_'
+foreach ($file in $tfFiles) {
+    Write-Host "📄 Processing file: $($file.FullName)"
 
-    Write-Host "Reconciling service principal: $($spJson.id)"
-    terraform import "azuread_service_principal.sp_$san" $spJson.id
+    # Read Terraform file contents
+    $content = Get-Content -Path $file.FullName -Raw
+
+    # Regex match both applications and service principals
+    $matches = [regex]::Matches($content, 'resource\s+"(azuread_application|azuread_service_principal)"\s+"([^"]+)"')
+
+    foreach ($m in $matches) {
+        $resourceType = $m.Groups[1].Value
+        $resourceName = $m.Groups[2].Value
+        $resourceAddress = "$resourceType.$resourceName"
+
+        Write-Host "➡️ Checking $resourceAddress"
+
+        # Check if already in Terraform state
+        $stateCheck = terraform state list | Select-String -Pattern $resourceAddress
+
+        if ($stateCheck) {
+            Write-Host "✔️ Already in state: $resourceAddress"
+        } else {
+            Write-Host "⚡ Importing $resourceAddress"
+
+            # Find the object_id from the file
+            $objectIdMatch = [regex]::Match($content, 'object_id\s*=\s*"([^"]+)"')
+            if ($objectIdMatch.Success) {
+                $objectId = $objectIdMatch.Groups[1].Value
+                Write-Host "   ➡️ Running: terraform import $resourceAddress $objectId"
+                terraform import $resourceAddress $objectId
+            } else {
+                Write-Host "❌ Could not find object_id in $($file.Name) for $resourceAddress"
+            }
+        }
+    }
 }
 
-Write-Host "Reconciliation complete."
+Write-Host "🎉 Reconcile complete!"
