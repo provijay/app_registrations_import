@@ -1,3 +1,0 @@
-resource "azuread_service_principal" "indicator_of_compromise_ioc_misp_feed_to_windows_defender_atp" {
-  client_id = azuread_application.indicator_of_compromise_ioc_misp_feed_to_windows_defender_atp.client_id
-}

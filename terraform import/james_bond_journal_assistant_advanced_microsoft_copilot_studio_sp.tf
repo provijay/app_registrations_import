@@ -1,3 +1,0 @@
-resource "azuread_service_principal" "james_bond_journal_assistant_advanced_microsoft_copilot_studio" {
-  client_id = azuread_application.james_bond_journal_assistant_advanced_microsoft_copilot_studio.client_id
-}
