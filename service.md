@@ -297,12 +297,69 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 ---
 
 ## 6. Gap Analysis
-| Service        | Business SLA | Microsoft SLA | Gap      | Risk    | Notes |
-|----------------|--------------|---------------|----------|---------|-------|
-| Azure SQL DB   | 99.99%       | 99.99%        | None     | Low     | Meets requirement |
-| Azure VMs      | 99.99%       | 99.95%        | -0.04%   | Medium  | Needs AZ deployment |
-| Azure Storage  | 99.95%       | 99.9%         | -0.05%   | Medium  | Enable GRS/RA-GRS |
-| App Gateway    | 99.99%       | 99.95%        | -0.04%   | Medium  | Ensure ≥2 instances |
+
+| Service                                 | Business SLA (%) | Microsoft SLA (%) | Gap (%) | Risk    | Notes |
+|----------------------------------------|-----------------|------------------|---------|---------|-------|
+| **Compute**                             |                 |                  |         |         |       |
+| Azure Virtual Machines                  |                 | 99.95%           |         |         | Core compute workloads; consider AZ deployment for higher availability |
+| Azure App Service                        |                 | 99.95%           |         |         | Web apps |
+| Azure Kubernetes Service (AKS)          |                 | 99.95%           |         |         | Containerized apps; check node redundancy |
+| Azure Functions                          |                 | 99.95%           |         |         | Event-driven workloads |
+| Azure Container Instances                |                 | 99.9%            |         |         | Short-lived containers |
+| Azure Container Apps                     |                 | 99.9%            |         |         | Managed container apps |
+| Azure Service Fabric                     |                 | 99.9%            |         |         | Microservices platform |
+| **Storage**                              |                 |                  |         |         |       |
+| Azure Blob Storage                        |                 | 99.9%            |         |         | Object storage; consider GRS/RA-GRS for DR |
+| Azure Disk Storage                        |                 | 99.9%            |         |         | Persistent disk for VMs |
+| Azure File Storage                        |                 | 99.9%            |         |         | SMB file shares |
+| Azure Queue Storage                       |                 | 99.9%            |         |         | Messaging queue |
+| Azure Table Storage                       |                 | 99.9%            |         |         | NoSQL key-value store |
+| Azure Data Lake Storage Gen2              |                 | 99.9%            |         |         | Big data analytics storage |
+| Azure NetApp Files                        |                 | 99.9%            |         |         | Enterprise file storage |
+| **Networking**                            |                 |                  |         |         |       |
+| Azure Virtual Network                     |                 | 99.99%           |         |         | Network backbone |
+| Azure Load Balancer                        |                 | 99.99%           |         |         | L4 traffic balancing |
+| Azure Application Gateway (WAF)           |                 | 99.95%           |         |         | L7 traffic & security; ensure ≥2 instances |
+| Azure VPN Gateway                          |                 | 99.9%            |         |         | Connectivity |
+| Azure ExpressRoute                         |                 | 99.95%           |         |         | Private connectivity |
+| Azure Front Door                            |                 | 99.99%           |         |         | Global load balancing |
+| Azure Traffic Manager                      |                 | 99.99%           |         |         | DNS-based routing |
+| Azure DNS                                  |                 | 99.99%           |         |         | Domain management |
+| Azure Bastion                               |                 | 99.95%           |         |         | Secure RDP/SSH |
+| Azure Firewall                              |                 | 99.95%           |         |         | Network security |
+| Azure DDoS Protection                       |                 | 99.99%           |         |         | DDoS mitigation |
+| Azure Private Link                          |                 | 99.95%           |         |         | Private endpoint connectivity |
+| Azure Route Server                          |                 | 99.95%           |         |         | Dynamic routing |
+| **Security & Identity**                     |                 |                  |         |         |       |
+| Azure Active Directory (AAD)               |                 | 99.99%           |         |         | Identity & access |
+| Azure AD B2C                                |                 | 99.95%           |         |         | Consumer identity |
+| Azure AD B2B                                |                 | 99.95%           |         |         | External partners |
+| Azure AD Domain Services                    |                 | 99.95%           |         |         | Domain-join support |
+| Azure Key Vault                             |                 | 99.99%           |         |         | Secrets, keys, certs |
+| Azure Security Center / Defender           |                 | 99.95%           |         |         | Threat detection |
+| Azure Sentinel                              |                 | 99.95%           |         |         | SIEM & analytics |
+| **Databases**                               |                 |                  |         |         |       |
+| Azure SQL Database                           |                 | 99.99%           |         |         | Relational database |
+| Azure SQL Managed Instance                   |                 | 99.99%           |         |         | Managed instance SQL |
+| Azure SQL Hyperscale                         |                 | 99.99%           |         |         | High-volume SQL |
+| Azure Cosmos DB                              |                 | 99.99%           |         |         | Multi-model NoSQL DB |
+| Azure Database for MySQL                     |                 | 99.99%           |         |         | Managed MySQL DB |
+| Azure Database for PostgreSQL                |                 | 99.99%           |         |         | Managed PostgreSQL DB |
+| Azure Database for MariaDB                   |                 | 99.99%           |         |         | Managed MariaDB DB |
+| Azure Synapse Analytics                      |                 | 99.95%           |         |         | Data warehouse & BI |
+| Azure Cache for Redis                        |                 | 99.95%           |         |         | In-memory caching |
+| **Integration & Messaging**                  |                 |                  |         |         |       |
+| Azure Logic Apps                             |                 | 99.9%            |         |         | Workflow automation |
+| Azure Service Bus                             |                 | 99.9%            |         |         | Messaging |
+| Azure Event Grid                              |                 | 99.9%            |         |         | Event routing |
+| Azure Event Hubs                              |                 | 99.9%            |         |         | Telemetry ingestion |
+| Azure API Management                          |                 | 99.9%            |         |         | API gateway |
+| Azure IoT Hub                                 |                 | 99.9%            |         |         | IoT device management |
+| Azure Machine Learning                        |                 | 99.9%            |         |         | Model training & deployment |
+| Azure Cognitive Services                       |                 | 99.9%            |         |         | Prebuilt AI APIs |
+| Azure Databricks                               |                 | 99.9%            |         |         | Big data analytics & AI |
+| Azure Backup                                   |                 | 99.9%            |         |         | Backup service |
+| Azure Site Recovery                            |                 | 99.9%            |         |         | Multi-region DR |
 
 ---
 
@@ -342,19 +399,72 @@ Each BU defines its **Availability SLA**, **RPO**, and **RTO** expectations.
 ---
 
 ## SLA Strategy by Azure Service
+# Azure SLA Strategy Recommendations
 
-| Azure Service          | SLA Strategy Recommendation                                                                 |
-|-------------------------|---------------------------------------------------------------------------------------------|
-| **App Service / API**   | Use **App Service Environment (ASE)** or **Availability Zones** for ≥99.95%. For active-active, use **Front Door**. |
-| **App Gateway**         | Deploy in **zonal configuration**. For higher SLA → pair with **Azure Front Door** for global failover. |
-| **Azure Front Door**    | Global active-active by default. Recommended for **mission-critical web workloads**.         |
-| **Traffic Manager**     | DNS-based geo-routing. Suitable for **multi-region failover** (higher RTO vs Front Door).   |
-| **Azure SQL**           | Zone redundant (ZRS) for ≥99.95%. Use **Auto-failover groups** for geo-redundancy.          |
-| **Cosmos DB**           | Enable **multi-region writes** for 99.999% SLA.                                             |
-| **Azure Storage**       | Use **ZRS** for intra-region, **RA-GRS** for cross-region DR.                               |
-| **Key Vault**           | Use **Premium tier with zone redundancy**.                                                  |
-| **AKS**                 | Deploy node pools across **Availability Zones**. Use **multi-region clusters** if SLA >99.95%. |
-| **VMs**                 | Use **Availability Sets** or **Zones** for resilience. For higher SLA → use paired region failover. |
+| Azure Service                        | SLA Strategy Recommendation                                                                 |
+|--------------------------------------|---------------------------------------------------------------------------------------------|
+| **Compute**                          |                                                                                             |
+| Azure Virtual Machines (VMs)         | Use **Availability Sets** or **Availability Zones** for resilience. For higher SLA → pair with **paired-region failover**. |
+| Azure App Service                     | Use **App Service Environment (ASE)** or **Availability Zones** for ≥99.95%. For active-active, use **Front Door**. |
+| Azure Kubernetes Service (AKS)       | Deploy node pools across **Availability Zones**. Use **multi-region clusters** if SLA >99.95%. |
+| Azure Functions                       | Use **Premium Plan** with **zone redundancy** for higher SLA. Consider **multi-region deployment**. |
+| Azure Container Instances / Apps      | Use **zone redundancy** where supported. For critical workloads, pair with **Front Door** or **Traffic Manager**. |
+| Azure Service Fabric                  | Deploy across **multiple nodes and zones**. Ensure **backup and failover policies**. |
+| **Storage**                           |                                                                                             |
+| Azure Blob / File / Queue / Table Storage | Use **Zone-Redundant Storage (ZRS)** for intra-region resiliency; **Geo-Redundant (GRS / RA-GRS)** for cross-region DR. |
+| Azure Disk Storage                    | Use **Premium SSD with ZRS**. For VM disks in critical apps, combine with VM **Availability Zones**. |
+| Azure Data Lake Storage Gen2          | Use **RA-GRS** for mission-critical analytics workloads. |
+| Azure NetApp Files                    | Deploy in **dual-zone** or **multi-zone redundancy** for high availability. |
+| **Networking**                        |                                                                                             |
+| Azure Virtual Network                 | Design with **hub-spoke topology**. Use **VPN/ExpressRoute redundancy**. |
+| Azure Load Balancer                   | Use **Standard SKU** for zone-resilient L4 traffic balancing. |
+| Azure Application Gateway (WAF)      | Deploy in **zonal configuration**. For global failover, pair with **Azure Front Door**. |
+| Azure VPN Gateway                     | Use **active-active configuration** across zones for higher SLA. |
+| Azure ExpressRoute                    | Use **dual circuits** in different physical paths for resiliency. |
+| Azure Front Door                       | Global active-active by default. Recommended for **mission-critical web workloads**. |
+| Azure Traffic Manager                  | DNS-based geo-routing. Suitable for **multi-region failover** (higher RTO vs Front Door). |
+| Azure DNS                              | Use **zone redundancy** and multiple name servers across regions. |
+| Azure Bastion                           | Deploy across **multiple zones**. Consider pairing with **VPN gateway** for backup access. |
+| Azure Firewall                          | Use **HA deployment across availability zones**. |
+| Azure DDoS Protection                   | Enabled by default on standard SKU. Monitor **attack metrics** and plan **regional failover**. |
+| Azure Private Link                      | Use **multi-region endpoints** for critical workloads. |
+| Azure Route Server                      | Deploy across zones for dynamic routing redundancy. |
+| **Security & Identity**                 |                                                                                             |
+| Azure Active Directory (AAD)           | Leverage **multi-tenant architecture**; enable **Azure AD Connect HA**. |
+| Azure Key Vault                          | Use **Premium tier with zone redundancy**. Consider **geo-replication** for critical secrets. |
+| Azure Security Center / Defender        | Use **multi-region deployment** for monitoring critical resources. |
+| Azure Sentinel                           | Deploy **across multiple regions** for analytics continuity. |
+| **Databases**                           |                                                                                             |
+| Azure SQL Database                       | Use **Zone Redundant (ZRS)** for ≥99.95%. Use **Auto-failover groups** for geo-redundancy. |
+| Azure SQL Managed Instance               | Same as Azure SQL DB; ensure **regional failover group** configured. |
+| Azure SQL Hyperscale                     | Use **Auto-failover groups** and **zone redundancy**. |
+| Azure Cosmos DB                          | Enable **multi-region writes** for 99.999% SLA. |
+| Azure Database for MySQL / PostgreSQL / MariaDB | Deploy in **Zone Redundant Configuration**. Use **geo-replication** for cross-region DR. |
+| Azure Synapse Analytics                  | Use **RA-GRS storage** for data; ensure **multi-region integration runtime** for failover. |
+| Azure Cache for Redis                     | Use **Premium tier with geo-replication**. Deploy across **Availability Zones**. |
+| **Integration & Messaging**              |                                                                                             |
+| Azure Logic Apps                          | Deploy **across multiple regions** for critical workflows. |
+| Azure Service Bus                          | Use **Premium tier with availability zones**. |
+| Azure Event Grid                           | Enable **geo-distribution** for events. |
+| Azure Event Hubs                           | Deploy **across zones** or **regions** for high-throughput ingestion. |
+| Azure API Management                        | Deploy in **multi-region** for SLA >99.95%. |
+| Azure IoT Hub                                | Use **multi-region disaster recovery** and **device failover**. |
+| **Analytics & AI**                         |                                                                                             |
+| Azure Machine Learning                       | Use **multi-zone or multi-region compute clusters** for critical model training. |
+| Azure Cognitive Services                     | Deploy **regionally redundant endpoints** for SLA improvement. |
+| Azure Databricks                              | Use **workspace in multiple regions** or **RA-GRS storage**. |
+| Azure HDInsight                               | Use **multi-region clusters** for resilience. |
+| Azure Data Factory                             | Use **integration runtime across multiple regions**. |
+| Azure Stream Analytics                          | Use **redundant streaming units**; consider **multi-region job deployment**. |
+| **Backup & Disaster Recovery**                |                                                                                             |
+| Azure Backup                                    | Store backup in **RA-GRS** for cross-region DR. |
+| Azure Site Recovery                             | Deploy **multi-region failover** for mission-critical workloads. |
+| **Hybrid & Multicloud**                          |                                                                                             |
+| Azure Arc                                       | Use **multiple connected regions** for HA. |
+| Azure Stack HCI / Hub / Edge                     | Use **clustered HA nodes**; consider **Azure Site Recovery** integration. |
+| Azure VMware Solution                           | Deploy **across multiple zones or regions** for critical workloads. |
+| **Other / Misc**                                 |                                                                                             |
+| Power BI Embedded                               | Use **multi-region capacity nodes** for high availability dashboards. |
 
 ---
 
